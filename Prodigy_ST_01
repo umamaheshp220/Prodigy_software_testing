@@ -1,0 +1,82 @@
+# Python program to generate Markdown test cases for a calculator
+# Without using built-in arithmetic operators for operations
+
+def add(a, b):
+    # Addition without using +
+    while b != 0:
+        carry = a & b
+        a = a ^ b
+        b = carry << 1
+    return a
+
+def subtract(a, b):
+    # Subtraction without using -
+    return add(a, add(~b, 1))
+
+def multiply(a, b):
+    # Multiplication without using *
+    result = 0
+    negative = (a < 0) ^ (b < 0)
+    a, b = abs(a), abs(b)
+    for _ in range(b):
+        result = add(result, a)
+    return -result if negative else result
+
+def divide(a, b):
+    # Division without using /
+    if b == 0:
+        return "Error: Division by zero"
+    negative = (a < 0) ^ (b < 0)
+    a, b = abs(a), abs(b)
+    quotient = 0
+    while a >= b:
+        a = subtract(a, b)
+        quotient = add(quotient, 1)
+    return -quotient if negative else quotient
+
+# Markdown test case generator
+def generate_test_cases():
+    test_cases = [
+        {
+            "id": "TC001",
+            "desc": "Addition of two positive integers",
+            "pre": "Calculator is powered on",
+            "steps": ["Enter 5", "Press +", "Enter 3", "Press ="],
+            "expected": str(add(5, 3))
+        },
+        {
+            "id": "TC002",
+            "desc": "Subtraction with negative result",
+            "pre": "Calculator is powered on",
+            "steps": ["Enter 3", "Press -", "Enter 7", "Press ="],
+            "expected": str(subtract(3, 7))
+        },
+        {
+            "id": "TC003",
+            "desc": "Multiplication of positive and negative number",
+            "pre": "Calculator is powered on",
+            "steps": ["Enter -4", "Press ×", "Enter 6", "Press ="],
+            "expected": str(multiply(-4, 6))
+        },
+        {
+            "id": "TC004",
+            "desc": "Division by zero",
+            "pre": "Calculator is powered on",
+            "steps": ["Enter 8", "Press ÷", "Enter 0", "Press ="],
+            "expected": divide(8, 0)
+        }
+    ]
+
+    markdown = "# Calculator Test Cases\n\n"
+    for tc in test_cases:
+        markdown += f"## Test Case ID: {tc['id']}\n"
+        markdown += f"**Test Description:** {tc['desc']}\n\n"
+        markdown += f"**Preconditions:** {tc['pre']}\n\n"
+        markdown += "**Test Steps:**\n"
+        for step in tc['steps']:
+            markdown += f"- {step}\n"
+        markdown += f"\n**Expected Result:** {tc['expected']}\n\n"
+    return markdown
+
+# Output markdown test cases
+print(generate_test_cases())
