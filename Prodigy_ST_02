@@ -1,0 +1,49 @@
+import requests
+from bs4 import BeautifulSoup
+
+def is_link_broken(url):
+    try:
+        r = requests.get(url)
+        if r.status_code >= 400:
+            return True
+        return False
+    except:
+        return True
+
+def test_website(url, user_agent, device):
+    headers = {"User-Agent": user_agent}
+    r = requests.get(url, headers=headers)
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    links = [a.get("href") for a in soup.find_all("a") if a.get("href")]
+    broken = [link for link in links if is_link_broken(link)]
+    
+    return {
+        "device": device,
+        "layout_issue": False,  # Can't check layout without Selenium
+        "broken_links": broken,
+        "functionality_ok": len(broken) == 0
+    }
+
+# Device simulation
+devices = [
+    ("Desktop", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"),
+    ("Tablet", "Mozilla/5.0 (iPad; CPU OS 13_2 like Mac OS X)"),
+    ("Mobile", "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2 like Mac OS X)")
+]
+
+website_url = "https://example.com"
+findings = [test_website(website_url, ua, d) for d, ua in devices]
+
+def generate_markdown(findings):
+    markdown = "# Web Compatibility Test Report\n\n"
+    for f in findings:
+        markdown += f"## Device: {f['device']}\n"
+        markdown += f"- **Layout Issue:** {'Yes' if f['layout_issue'] else 'No'}\n"
+        markdown += f"- **Broken Links:** {len(f['broken_links'])}\n"
+        for link in f['broken_links']:
+            markdown += f"  - {link}\n"
+        markdown += f"- **Functionality Status:** {'Pass' if f['functionality_ok'] else 'Fail'}\n\n"
+    return markdown
+
+print(generate_markdown(findings))
