@@ -1,0 +1,64 @@
+import pytest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+
+
+BASE_URL = "https://www.saucedemo.com/"
+
+
+@pytest.fixture(scope="module")
+def driver():
+    """Setup Chrome WebDriver"""
+    options = Options()
+    options.add_argument("--headless=new")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.implicitly_wait(5)
+    yield driver
+    driver.quit()
+
+
+def wait_for(driver, locator, timeout=10):
+    """Helper to wait for an element"""
+    return WebDriverWait(driver, timeout).until(EC.presence_of_element_located(locator))
+
+
+# ---------------------------
+# TEST CASES
+# ---------------------------
+
+def test_checkout_flow(driver):
+    # 1. Open site
+    driver.get(BASE_URL)
+    assert "Swag Labs" in driver.title
+
+    # 2. Login
+    wait_for(driver, (By.ID, "user-name")).send_keys("standard_user")
+    driver.find_element(By.ID, "password").send_keys("secret_sauce")
+    driver.find_element(By.ID, "login-button").click()
+    assert "inventory" in driver.current_url
+
+    # 3. Add first item to cart
+    driver.find_element(By.CSS_SELECTOR, ".inventory_item button").click()
+    driver.find_element(By.CLASS_NAME, "shopping_cart_link").click()
+    assert "cart" in driver.current_url
+
+    # 4. Proceed to checkout
+    driver.find_element(By.ID, "checkout").click()
+    assert "checkout-step-one" in driver.current_url
+
+    # 5. Fill checkout form
+    driver.find_element(By.ID, "first-name").send_keys("John")
+    driver.find_element(By.ID, "last-name").send_keys("Doe")
+    driver.find_element(By.ID, "postal-code").send_keys("12345")
+    driver.find_element(By.ID, "continue").click()
+    assert "checkout-step-two" in driver.current_url
+
+    # 6. Finish purchase
+    driver.find_element(By.ID, "finish").click()
+    confirmation = wait_for(driver, (By.CLASS_NAME, "complete-header")).text
+    assert "THANK YOU FOR YOUR ORDER" in confirmation
