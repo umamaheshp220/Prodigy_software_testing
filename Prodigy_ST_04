@@ -1,0 +1,59 @@
+import pytest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# 🔑 Replace with your BrowserStack credentials
+BROWSERSTACK_USERNAME = "YOUR_USERNAME"
+BROWSERSTACK_ACCESS_KEY = "YOUR_ACCESS_KEY"
+
+BASE_URL = "https://the-internet.herokuapp.com/login"
+
+# ---------------------------
+# FIXTURE FOR MULTI-BROWSER
+# ---------------------------
+
+@pytest.fixture(params=[
+    {"browserName": "Chrome", "browserVersion": "latest", "os": "Windows", "osVersion": "11"},
+    {"browserName": "Firefox", "browserVersion": "latest", "os": "Windows", "osVersion": "11"},
+    {"browserName": "Safari", "browserVersion": "latest", "os": "OS X", "osVersion": "Ventura"},
+    {"browserName": "Edge", "browserVersion": "latest", "os": "Windows", "osVersion": "11"},
+])
+def driver(request):
+    """Run tests across multiple browsers on BrowserStack"""
+    capabilities = request.param
+    capabilities["projectName"] = "Cross-Browser Login Test"
+    capabilities["buildName"] = "pytest-browserstack"
+    capabilities["sessionName"] = "Login test"
+
+    # Remote URL for BrowserStack hub
+    url = f"https://{BROWSERSTACK_USERNAME}:{BROWSERSTACK_ACCESS_KEY}" \
+          f"@hub-cloud.browserstack.com/wd/hub"
+
+    driver = webdriver.Remote(command_executor=url, desired_capabilities=capabilities)
+    yield driver
+    driver.quit()
+
+def get_flash_message(driver):
+    """Helper to fetch flash message after login attempt"""
+    return WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "flash"))
+    ).text
+
+# ---------------------------
+# TEST CASES
+# ---------------------------
+
+def test_login_valid_credentials(driver):
+    """✅ Positive Test: Valid username & password"""
+    driver.get(BASE_URL)
+    driver.find_element(By.ID, "username").send_keys("tomsmith")
+    driver.find_element(By.ID, "password").send_keys("SuperSecretPassword!")
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+
+    message = get_flash_message(driver)
+    assert "You logged into a secure area!" in message
+
+@pytest.mark.parametrize("username,password,expected", [
+    ("wrongUser", "SuperSecretPassword!", "Your user
