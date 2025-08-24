@@ -1,0 +1,65 @@
+import pytest
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Demo site for login testing
+BASE_URL = "https://the-internet.herokuapp.com/login"
+
+# ---------------------------
+# FIXTURES
+# ---------------------------
+
+@pytest.fixture(scope="module")
+def driver():
+    """Setup Chrome WebDriver (auto-managed)"""
+    options = Options()
+    options.add_argument("--headless=new")  # run headless (no UI)
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.implicitly_wait(5)
+    yield driver
+    driver.quit()
+
+@pytest.fixture(autouse=True)
+def open_login_page(driver):
+    """Navigate to login page before each test"""
+    driver.get(BASE_URL)
+
+def get_flash_message(driver):
+    """Helper to get flash message text"""
+    return WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.ID, "flash"))
+    ).text
+
+# ---------------------------
+# TEST CASES
+# ---------------------------
+
+def test_login_valid_credentials(driver):
+    """✅ Positive Test: Valid username & password"""
+    driver.find_element(By.ID, "username").send_keys("tomsmith")
+    driver.find_element(By.ID, "password").send_keys("SuperSecretPassword!")
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+
+    message = get_flash_message(driver)
+    assert "You logged into a secure area!" in message, f"Unexpected: {message}"
+
+
+@pytest.mark.parametrize("username,password,expected", [
+    ("wrongUser", "SuperSecretPassword!", "Your username is invalid!"),   # ❌ invalid username
+    ("tomsmith", "wrongPass", "Your password is invalid!"),              # ❌ invalid password
+    ("wrongUser", "wrongPass", "Your username is invalid!"),             # ❌ both invalid
+    ("", "", "Your username is invalid!")                                # ❌ empty fields
+])
+def test_login_negative_cases(driver, username, password, expected):
+    """❌ Negative Tests: Invalid logins"""
+    driver.find_element(By.ID, "username").send_keys(username)
+    driver.find_element(By.ID, "password").send_keys(password)
+    driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+
+    message = get_flash_message(driver)
+    assert expected in message, f"Expected: {expected}, Got: {message}"
